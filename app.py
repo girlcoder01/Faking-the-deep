@@ -18,7 +18,7 @@ if "GEMINI_API_KEY" in st.secrets:
 
 from combined_detect import analyze_combined
 
-st.set_page_config(page_title="Deepfake Video Checker", page_icon="🔍", layout="centered")
+st.set_page_config(page_title="Faking the Deep", page_icon="🔍", layout="centered")
 
 # --- Custom Cute Styling (Purple, Blue, Pink & Rounded Bubbles) ---
 st.markdown(
