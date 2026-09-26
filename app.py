@@ -57,7 +57,7 @@ def render_arduino_button(label: str, confidence: float):
 
       btn.addEventListener('click', async () => {{
         if (!("serial" in navigator)) {{
-          status.innerHTML = "⚠️ <b>Web Serial not supported.</b> Please use Google Chrome, Edge, or Opera on desktop.";
+          status.innerHTML = "⚠️ <b>Web Serial not supported.</b> Please use Google Chrome or Edge.";
           status.style.color = "#d93025";
           return;
         }}
@@ -66,27 +66,34 @@ def render_arduino_button(label: str, confidence: float):
           status.innerText = "Requesting USB port access...";
           status.style.color = "#444";
 
-          // Prompts user to select the Arduino port
+          // 1. Pick port
           const port = await navigator.serial.requestPort();
-          await port.open({{ baudRate: 9600 }});
 
-          status.innerText = "Port open. Transmitting to LCD...";
+          // 2. Only open if Chrome hasn't opened it already
+          if (!port.readable && !port.writable) {{
+            try {{
+              await port.open({{ baudRate: 9600 }});
+            }} catch (openErr) {{
+              // If already open, ignore and proceed to write
+              if (!openErr.message.includes("already open")) {{
+                throw openErr;
+              }}
+            }}
+          }}
 
-          const textEncoder = new TextEncoderStream();
-          const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
-          const writer = textEncoder.writable.getWriter();
+          status.innerText = "Transmitting to Arduino LCD...";
 
-          // Write message matching arduino_serial.py protocol
-          await writer.write("{payload}");
-
-          // Finish write cycle before closing
+          // 3. Write data directly to the stream
+          const encoder = new TextEncoder();
+          const writer = port.writable.getWriter();
+          await writer.write(encoder.encode("{payload}"));
+          
+          // 4. Release writer lock (leave port state intact for Chrome)
           writer.releaseLock();
-          await textEncoder.readable.cancel();
-          await writableStreamClosed.catch(() => {{}});
-          await port.close();
 
-          status.innerText = "✅ Successfully sent '{tag}:{confidence}' to Arduino LCD!";
+          status.innerText = "✅ Sent '{tag}:{confidence}' to Arduino LCD!";
           status.style.color = "#0f9d58";
+
         }} catch (err) {{
           if (err.name === 'NotFoundError') {{
             status.innerText = "Connection cancelled (no port selected).";
