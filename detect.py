@@ -16,6 +16,25 @@ from face_utils import extract_face_crops
 
 WEIGHTS_PATH = "weights/Meso4_DF.h5"  # see README for where to get this file
 
+# Module-level cache for CLI / standalone usage
+_LOADED_MODEL = None
+
+
+def get_detector(weights_path: str = WEIGHTS_PATH):
+    """Loads and caches the Meso4 model in memory."""
+    global _LOADED_MODEL
+    if _LOADED_MODEL is None:
+        model = Meso4()
+        # Fall back gracefully depending on wrapper method name
+        if hasattr(model, "load"):
+            model.load(weights_path)
+        elif hasattr(model, "load_weights"):
+            model.load_weights(weights_path)
+        else:
+            model.model.load_weights(weights_path)
+        _LOADED_MODEL = model
+    return _LOADED_MODEL
+
 
 def analyze_video(video_path: str, weights_path: str = WEIGHTS_PATH):
     """
@@ -24,6 +43,7 @@ def analyze_video(video_path: str, weights_path: str = WEIGHTS_PATH):
         "confidence": float 0-100,
         "frames_analyzed": int,
         "faces_found": int,
+        "raw_mean_score": float,
     }
     """
     crops = extract_face_crops(video_path)
@@ -35,15 +55,12 @@ def analyze_video(video_path: str, weights_path: str = WEIGHTS_PATH):
 
     faces = np.array([c[1] for c in crops])  # shape (N, 256, 256, 3)
 
-    model = Meso4()
-    model.load_weights(weights_path)
+    model = get_detector(weights_path)
 
     per_frame_scores = model.predict(faces).flatten()  # values near 1 = real, near 0 = fake
     mean_score = float(np.mean(per_frame_scores))
 
     is_real = mean_score >= 0.5
-    # confidence = how far the average score is from the 0.5 decision boundary,
-    # rescaled to a 50-100% range
     confidence = 50 + abs(mean_score - 0.5) * 100
 
     return {
