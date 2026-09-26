@@ -10,6 +10,88 @@ command line — see README.md.
 import tempfile
 import os
 import streamlit as st
+
+import streamlit.components.v1 as components
+
+def render_arduino_button(label: str, confidence: float):
+    """
+    Renders a browser-native Web Serial button.
+    Allows a user in Chrome/Edge to send the verdict directly to their
+    locally plugged-in Arduino LCD from the hosted cloud app.
+    """
+    tag = "FAKE" if "FAKE" in str(label).upper() else "REAL"
+    payload = f"{tag}:{confidence}\\n"
+
+    html_code = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 15px;">
+      <button id="serial-btn" style="
+        background: linear-gradient(135deg, #00878a, #005c5f);
+        color: white;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+      ">
+        🔌 Send Result to Arduino LCD
+      </button>
+      <div id="serial-status" style="margin-top: 8px; font-size: 13px; color: #444;"></div>
+    </div>
+
+    <script>
+      const btn = document.getElementById('serial-btn');
+      const status = document.getElementById('serial-status');
+
+      btn.addEventListener('click', async () => {{
+        if (!("serial" in navigator)) {{
+          status.innerHTML = "⚠️ <b>Web Serial not supported.</b> Please use Google Chrome, Edge, or Opera on desktop.";
+          status.style.color = "#d93025";
+          return;
+        }}
+
+        try {{
+          status.innerText = "Requesting USB port access...";
+          status.style.color = "#444";
+
+          // Prompts user to select the Arduino port
+          const port = await navigator.serial.requestPort();
+          await port.open({{ baudRate: 9600 }});
+
+          status.innerText = "Port open. Transmitting to LCD...";
+
+          const textEncoder = new TextEncoderStream();
+          const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+          const writer = textEncoder.writable.getWriter();
+
+          // Write message matching your arduino_serial.py protocol
+          await writer.write("{payload}");
+
+          // Allow write cycle to finish before closing
+          writer.releaseLock();
+          await textEncoder.readable.cancel();
+          await writableStreamClosed.catch(() => {{}});
+          await port.close();
+
+          status.innerText = "✅ Successfully sent '{tag}:{confidence}' to Arduino LCD!";
+          status.style.color = "#0f9d58";
+        }} catch (err) {{
+          if (err.name === 'NotFoundError') {{
+            status.innerText = "Connection cancelled (no port selected).";
+            status.style.color = "#666";
+          }} else {{
+            status.innerText = "❌ Serial Error: " + err.message;
+            status.style.color = "#d93025";
+          }}
+        }}
+      }});
+    </script>
+    """
+    components.html(html_code, height=95)
  
 from combined_detect import analyze_combined
  
