@@ -1,5 +1,3 @@
-
-App · PY
 """
 Minimal upload UI. Run with:
  
