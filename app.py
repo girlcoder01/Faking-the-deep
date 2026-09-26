@@ -18,15 +18,15 @@ if "GEMINI_API_KEY" in st.secrets:
 
 from combined_detect import analyze_combined
 
+# Fallback safely if assets/logo.png isn't committed yet
+LOGO_PATH = "assets/logo.png" if os.path.exists("assets/logo.png") else "logo.png"
+HAS_LOGO = os.path.exists(LOGO_PATH)
+
 st.set_page_config(
     page_title="Faking the Deep",
-    page_icon="assets/logo.png",
-    layout="centered"
+    page_icon=LOGO_PATH if HAS_LOGO else "🔍",
+    layout="centered",
 )
-
-# Display at top of page
-st.image("assets/logo.png", width=140)
-st.title("Faking the Deep")
 
 # --- Custom Cute Styling (Purple, Blue, Pink & Rounded Bubbles) ---
 st.markdown(
@@ -233,7 +233,11 @@ def render_arduino_button(label: str, confidence: float):
     components.html(html_code, height=65)
 
 
-st.title("🔍 Deepfake Video Checker")
+# Display logo and title
+if HAS_LOGO:
+    st.image(LOGO_PATH, width=140)
+
+st.title("Faking the Deep")
 st.caption(
     "Upload a short video clip with a visible face and audio. This "
     "checks the video you upload using three signals: facial video "
@@ -260,7 +264,7 @@ if uploaded_file is not None:
                 st.success(f"✅ Overall Verdict: {result['label']}")
             else:
                 st.error(f"⚠️ Overall Verdict: {result['label']}")
-            
+
             st.metric("Overall Confidence", f"{result['confidence']}%")
 
             # Arduino LCD output widget
