@@ -1,0 +1,12 @@
+
+tensorflow>=2.16
+opencv-python-headless
+streamlit
+numpy
+pyserial
+transformers
+torch
+moviepy
+soundfile
+google-genai
+ 
