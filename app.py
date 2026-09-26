@@ -22,20 +22,16 @@ st.set_page_config(page_title="Deepfake Video Checker", page_icon="🔍")
 
 
 def render_arduino_button(label: str, confidence: float):
-    """
-    Auto-sends the verdict to the Arduino LCD if already connected,
-    or offers a one-click connection to enable auto-sync for the session.
-    """
     tag = "FAKE" if "FAKE" in str(label).upper() else "REAL"
     payload = f"{tag}:{confidence}\\n"
 
     html_code = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 15px 0;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 10px 0;">
       <button id="connect-btn" style="
         background: #00878a;
         color: white;
         border: none;
-        padding: 8px 16px;
+        padding: 9px 16px;
         border-radius: 6px;
         font-size: 13px;
         font-weight: 600;
@@ -43,7 +39,7 @@ def render_arduino_button(label: str, confidence: float):
       ">
         🔌 Pair Arduino for Auto-Sync
       </button>
-      <span id="serial-status" style="margin-left: 10px; font-size: 13px; color: #555;">Checking connection...</span>
+      <span id="serial-status" style="margin-left: 10px; font-size: 13px; color: #555;">Ready</span>
     </div>
 
     <script>
@@ -60,45 +56,43 @@ def render_arduino_button(label: str, confidence: float):
           const writer = port.writable.getWriter();
           await writer.write(encoder.encode(payload));
           writer.releaseLock();
-          status.innerText = "⚡ Auto-sent to LCD: " + payload.trim();
+          status.innerText = "⚡ Sent: " + payload.trim();
           status.style.color = "#0f9d58";
-          btn.style.display = "none"; // Hide button once auto-sync works
         }} catch (err) {{
-          status.innerText = "Error: " + err.message;
+          status.innerText = "Send failed: " + err.message;
           status.style.color = "#d93025";
         }}
       }}
 
-      // Check if this browser tab already has permission for an Arduino
-      async function tryAutoSend() {{
+      // On click, prompt user explicitly
+      btn.addEventListener('click', async () => {{
         if (!("serial" in navigator)) {{
-          status.innerText = "Web Serial not supported (use Chrome/Edge).";
-          btn.style.display = "none";
+          alert("Web Serial is only supported in desktop Chrome, Edge, or Opera.");
           return;
         }}
-
-        const ports = await navigator.serial.getPorts();
-        if (ports.length > 0) {{
-          // Already authorized! Automatically send without waiting for a click
-          status.innerText = "Transmitting to paired Arduino...";
-          await sendData(ports[0]);
-        }} else {{
-          status.innerText = "Pair once to enable automatic LCD updates.";
-        }}
-      }}
-
-      btn.addEventListener('click', async () => {{
         try {{
-          const port = await navigator.serial.requestPort();
+          status.innerText = "Opening port selector...";
+          // Request any USB serial device with empty filter
+          const port = await navigator.serial.requestPort({{ filters: [] }});
           await sendData(port);
         }} catch (err) {{
-          status.innerText = "Cancelled.";
+          status.innerText = "No device chosen / " + err.message;
+          status.style.color = "#666";
         }}
       }});
 
-      tryAutoSend();
+      // Auto-send if browser already has a granted device
+      (async () => {{
+        if ("serial" in navigator) {{
+          const ports = await navigator.serial.getPorts();
+          if (ports.length > 0) {{
+            await sendData(ports[0]);
+          }}
+        }}
+      }})();
     </script>
     """
+    # Render with clean height
     components.html(html_code, height=65)
 
 
