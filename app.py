@@ -23,90 +23,83 @@ st.set_page_config(page_title="Deepfake Video Checker", page_icon="🔍")
 
 def render_arduino_button(label: str, confidence: float):
     """
-    Renders a browser-native Web Serial button.
-    Allows a user in Chrome/Edge to send the verdict directly to their
-    locally plugged-in Arduino LCD from the hosted cloud app.
+    Auto-sends the verdict to the Arduino LCD if already connected,
+    or offers a one-click connection to enable auto-sync for the session.
     """
     tag = "FAKE" if "FAKE" in str(label).upper() else "REAL"
     payload = f"{tag}:{confidence}\\n"
 
     html_code = f"""
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-top: 15px; margin-bottom: 15px;">
-      <button id="serial-btn" style="
-        background: linear-gradient(135deg, #00878a, #005c5f);
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 15px 0;">
+      <button id="connect-btn" style="
+        background: #00878a;
         color: white;
         border: none;
-        padding: 10px 18px;
-        border-radius: 8px;
-        font-size: 14px;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.15);
       ">
-        🔌 Push Result to Arduino LCD
+        🔌 Pair Arduino for Auto-Sync
       </button>
-      <div id="serial-status" style="margin-top: 8px; font-size: 13px; color: #444;"></div>
+      <span id="serial-status" style="margin-left: 10px; font-size: 13px; color: #555;">Checking connection...</span>
     </div>
 
     <script>
-      const btn = document.getElementById('serial-btn');
+      const btn = document.getElementById('connect-btn');
       const status = document.getElementById('serial-status');
+      const payload = "{payload}";
 
-      btn.addEventListener('click', async () => {{
-        if (!("serial" in navigator)) {{
-          status.innerHTML = "⚠️ <b>Web Serial not supported.</b> Please use Google Chrome or Edge.";
+      async function sendData(port) {{
+        try {{
+          if (!port.readable && !port.writable) {{
+            await port.open({{ baudRate: 9600 }});
+          }}
+          const encoder = new TextEncoder();
+          const writer = port.writable.getWriter();
+          await writer.write(encoder.encode(payload));
+          writer.releaseLock();
+          status.innerText = "⚡ Auto-sent to LCD: " + payload.trim();
+          status.style.color = "#0f9d58";
+          btn.style.display = "none"; // Hide button once auto-sync works
+        }} catch (err) {{
+          status.innerText = "Error: " + err.message;
           status.style.color = "#d93025";
+        }}
+      }}
+
+      // Check if this browser tab already has permission for an Arduino
+      async function tryAutoSend() {{
+        if (!("serial" in navigator)) {{
+          status.innerText = "Web Serial not supported (use Chrome/Edge).";
+          btn.style.display = "none";
           return;
         }}
 
+        const ports = await navigator.serial.getPorts();
+        if (ports.length > 0) {{
+          // Already authorized! Automatically send without waiting for a click
+          status.innerText = "Transmitting to paired Arduino...";
+          await sendData(ports[0]);
+        }} else {{
+          status.innerText = "Pair once to enable automatic LCD updates.";
+        }}
+      }}
+
+      btn.addEventListener('click', async () => {{
         try {{
-          status.innerText = "Requesting USB port access...";
-          status.style.color = "#444";
-
-          // 1. Pick port
           const port = await navigator.serial.requestPort();
-
-          // 2. Only open if Chrome hasn't opened it already
-          if (!port.readable && !port.writable) {{
-            try {{
-              await port.open({{ baudRate: 9600 }});
-            }} catch (openErr) {{
-              // If already open, ignore and proceed to write
-              if (!openErr.message.includes("already open")) {{
-                throw openErr;
-              }}
-            }}
-          }}
-
-          status.innerText = "Transmitting to Arduino LCD...";
-
-          // 3. Write data directly to the stream
-          const encoder = new TextEncoder();
-          const writer = port.writable.getWriter();
-          await writer.write(encoder.encode("{payload}"));
-          
-          // 4. Release writer lock (leave port state intact for Chrome)
-          writer.releaseLock();
-
-          status.innerText = "✅ Sent '{tag}:{confidence}' to Arduino LCD!";
-          status.style.color = "#0f9d58";
-
+          await sendData(port);
         }} catch (err) {{
-          if (err.name === 'NotFoundError') {{
-            status.innerText = "Connection cancelled (no port selected).";
-            status.style.color = "#666";
-          }} else {{
-            status.innerText = "❌ Serial Error: " + err.message;
-            status.style.color = "#d93025";
-          }}
+          status.innerText = "Cancelled.";
         }}
       }});
+
+      tryAutoSend();
     </script>
     """
-    components.html(html_code, height=95)
+    components.html(html_code, height=65)
 
 
 st.title("🔍 Deepfake Video Checker")
