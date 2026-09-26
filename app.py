@@ -37,7 +37,7 @@ def render_arduino_button(label: str, confidence: float):
         font-weight: 600;
         cursor: pointer;
       ">
-        🔌 Pair Arduino for Auto-Sync
+        🔌 Pair Arduino
       </button>
       <span id="serial-status" style="margin-left: 10px; font-size: 13px; color: #555;">Ready</span>
     </div>
