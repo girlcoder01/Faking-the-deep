@@ -1,10 +1,13 @@
-opencv-python-headless
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 streamlit
+opencv-python-headless
 numpy
 pyserial
-transformers
-torch
-moviepy
 soundfile
 google-genai
- 
+moviepy
+
+# PyTorch CPU-only build
+torch==2.2.2+cpu
+transformers
