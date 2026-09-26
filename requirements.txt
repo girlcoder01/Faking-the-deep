@@ -8,6 +8,6 @@ soundfile
 google-genai
 moviepy
 
-# PyTorch CPU-only build
-torch==2.2.2+cpu
+# CPU-only PyTorch without strict version lock
+torch
 transformers
