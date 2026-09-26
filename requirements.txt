@@ -7,6 +7,7 @@ pyserial
 soundfile
 google-genai
 moviepy
+tensorflow-cpu
 
 # CPU-only PyTorch without strict version lock
 torch
