@@ -18,7 +18,15 @@ if "GEMINI_API_KEY" in st.secrets:
 
 from combined_detect import analyze_combined
 
-st.set_page_config(page_title="Faking the Deep", page_icon="🔍", layout="centered")
+st.set_page_config(
+    page_title="Faking the Deep",
+    page_icon="assets/logo.png",
+    layout="centered"
+)
+
+# Display at top of page
+st.image("assets/logo.png", width=140)
+st.title("Faking the Deep")
 
 # --- Custom Cute Styling (Purple, Blue, Pink & Rounded Bubbles) ---
 st.markdown(
