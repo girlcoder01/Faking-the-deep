@@ -1,36 +1,15 @@
-"""
-Standalone audio deepfake detector. Run this on its own first, before
-wiring it into the main app -- same lesson as detect.py: prove it works
-before building anything on top of it.
-
-Usage:
-    python audio_detect.py path/to/video_or_audio_file.mp4
-
-Works on video files (it extracts the audio track first) or on audio
-files directly (.wav, .mp3).
-
-Uses a pretrained model from Hugging Face (motheecreator/Deepfake-audio-detection),
-downloaded automatically the first time you run this -- no manual weight
-file hunting needed this time.
-"""
-
 import sys
 import os
 import tempfile
-
+import numpy as np
+import soundfile as sf
 from transformers import pipeline
 
 MODEL_NAME = "motheecreator/Deepfake-audio-detection"
-
 AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac", ".m4a", ".ogg"}
 
 
 def _extract_audio_if_needed(input_path: str) -> str:
-    """
-    If input_path is a video file, extract its audio track to a temp
-    .wav file and return that path. If it's already an audio file,
-    return it unchanged.
-    """
     ext = os.path.splitext(input_path)[1].lower()
     if ext in AUDIO_EXTENSIONS:
         return input_path
@@ -41,59 +20,53 @@ def _extract_audio_if_needed(input_path: str) -> str:
     tmp_wav_path = tmp_wav.name
     tmp_wav.close()
 
-    with VideoFileClip(input_path) as clip:
-        if clip.audio is None:
-            raise RuntimeError(
-                "This video file doesn't seem to have an audio track."
-            )
-        
-        clip.audio.write_audiofile(tmp_wav_path, fps=16000, logger=None)
-
-    return tmp_wav_path
+    try:
+        with VideoFileClip(input_path) as clip:
+            if clip.audio is None:
+                raise RuntimeError("This video file doesn't seem to have an audio track.")
+            clip.audio.write_audiofile(tmp_wav_path, fps=16000, logger=None)
+        return tmp_wav_path
+    except Exception:
+        if os.path.exists(tmp_wav_path):
+            os.unlink(tmp_wav_path)
+        raise
 
 
 def analyze_audio(input_path: str):
-    """
-    Returns a dict: {
-        "label": "REAL" or "LIKELY FAKE",
-        "confidence": float 0-100,
-        "raw_label": the model's raw class label,
-    }
-    """
     audio_path = _extract_audio_if_needed(input_path)
+    is_temp = audio_path != input_path
 
-    import soundfile as sf
-    import numpy as np
+    try:
+        audio_array, sample_rate = sf.read(audio_path)
+        if audio_array.ndim > 1:
+            audio_array = np.mean(audio_array, axis=1)
 
-    audio_array, sample_rate = sf.read(audio_path)
-    if audio_array.ndim > 1:
-        # convert stereo to mono by averaging channels
-        audio_array = np.mean(audio_array, axis=1)
+        audio_array = audio_array.astype(np.float32)
 
-    
-    rms = float(np.sqrt(np.mean(audio_array ** 2)))
-    print(f"(debug) audio RMS level: {rms}")
-    SILENCE_THRESHOLD = 0.02  
-    if rms < SILENCE_THRESHOLD:
-        raise RuntimeError(
-            "Audio track is silent or has no clear speech -- skipping audio "
-            "analysis (there's nothing meaningful to check)."
-        )
+        rms = float(np.sqrt(np.mean(audio_array ** 2)))
+        silence_threshold = 0.02
+        if rms < silence_threshold:
+            raise RuntimeError(
+                "Audio track is silent or has no clear speech -- skipping audio "
+                "analysis (there's nothing meaningful to check)."
+            )
 
-    classifier = pipeline("audio-classification", model=MODEL_NAME)
-    results = classifier({"array": audio_array, "sampling_rate": sample_rate})
-  ]
+        classifier = pipeline("audio-classification", model=MODEL_NAME)
+        results = classifier({"array": audio_array, "sampling_rate": sample_rate})
 
-    top = max(results, key=lambda r: r["score"])
-    raw_label = top["label"].lower()
-    is_fake = "fake" in raw_label or "spoof" in raw_label
+        top = max(results, key=lambda r: r["score"])
+        raw_label = top["label"].lower()
+        is_fake = "fake" in raw_label or "spoof" in raw_label
 
-    return {
-        "label": "LIKELY FAKE" if is_fake else "REAL",
-        "confidence": round(top["score"] * 100, 1),
-        "raw_label": top["label"],
-        "all_scores": results,
-    }
+        return {
+            "label": "LIKELY FAKE" if is_fake else "REAL",
+            "confidence": round(top["score"] * 100, 1),
+            "raw_label": top["label"],
+            "all_scores": results,
+        }
+    finally:
+        if is_temp and os.path.exists(audio_path):
+            os.unlink(audio_path)
 
 
 if __name__ == "__main__":
