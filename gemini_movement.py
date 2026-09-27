@@ -46,8 +46,7 @@ def analyze_movement(video_path: str):
  
     print("Uploading video to Gemini...")
     video_file = client.files.upload(file=video_path)
- 
-    # wait for it to finish processing
+
     while video_file.state.name == "PROCESSING":
         print("  still processing...")
         time.sleep(3)
@@ -83,7 +82,6 @@ correct.
     )
  
     raw_text = response.text.strip()
-    # strip markdown code fences if Gemini wraps the JSON in ```json ... ```
     raw_text = re.sub(r"^```(json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
  
     try:
