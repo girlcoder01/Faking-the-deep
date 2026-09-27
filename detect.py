@@ -16,7 +16,7 @@ from face_utils import extract_face_crops
 
 WEIGHTS_PATH = "weights/Meso4_DF.h5"  # see README for where to get this file
 
-# Module-level cache for CLI / standalone usage
+
 _LOADED_MODEL = None
 
 
@@ -25,7 +25,6 @@ def get_detector(weights_path: str = WEIGHTS_PATH):
     global _LOADED_MODEL
     if _LOADED_MODEL is None:
         model = Meso4()
-        # Fall back gracefully depending on wrapper method name
         if hasattr(model, "load"):
             model.load(weights_path)
         elif hasattr(model, "load_weights"):
@@ -53,11 +52,11 @@ def analyze_video(video_path: str, weights_path: str = WEIGHTS_PATH):
             "clearer, more front-facing view of the person."
         )
 
-    faces = np.array([c[1] for c in crops])  # shape (N, 256, 256, 3)
+    faces = np.array([c[1] for c in crops])  
 
     model = get_detector(weights_path)
 
-    per_frame_scores = model.predict(faces).flatten()  # values near 1 = real, near 0 = fake
+    per_frame_scores = model.predict(faces).flatten()  
     mean_score = float(np.mean(per_frame_scores))
 
     is_real = mean_score >= 0.5
