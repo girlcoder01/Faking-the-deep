@@ -35,7 +35,6 @@ def _extract_audio_if_needed(input_path: str) -> str:
     if ext in AUDIO_EXTENSIONS:
         return input_path
 
-    # assume it's a video file -- extract audio with moviepy
     from moviepy import VideoFileClip
 
     tmp_wav = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
@@ -47,8 +46,7 @@ def _extract_audio_if_needed(input_path: str) -> str:
             raise RuntimeError(
                 "This video file doesn't seem to have an audio track."
             )
-        # write at 16kHz to match what the model expects, avoiding a
-        # separate resampling step
+        
         clip.audio.write_audiofile(tmp_wav_path, fps=16000, logger=None)
 
     return tmp_wav_path
@@ -72,12 +70,10 @@ def analyze_audio(input_path: str):
         # convert stereo to mono by averaging channels
         audio_array = np.mean(audio_array, axis=1)
 
-    # Check for near-silence -- an audio classifier will still confidently
-    # (and wrongly) guess "fake" or "real" on silence, so it's better to
-    # skip the analysis entirely than report a misleading result.
+    
     rms = float(np.sqrt(np.mean(audio_array ** 2)))
     print(f"(debug) audio RMS level: {rms}")
-    SILENCE_THRESHOLD = 0.02  # raised from 0.003 -- catches faint room noise, not just true silence
+    SILENCE_THRESHOLD = 0.02  
     if rms < SILENCE_THRESHOLD:
         raise RuntimeError(
             "Audio track is silent or has no clear speech -- skipping audio "
@@ -86,7 +82,7 @@ def analyze_audio(input_path: str):
 
     classifier = pipeline("audio-classification", model=MODEL_NAME)
     results = classifier({"array": audio_array, "sampling_rate": sample_rate})
-    # results looks like: [{"label": "fake", "score": 0.87}, {"label": "real", "score": 0.13}]
+  ]
 
     top = max(results, key=lambda r: r["score"])
     raw_label = top["label"].lower()
