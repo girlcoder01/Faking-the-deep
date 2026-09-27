@@ -44,7 +44,7 @@ def analyze_audio(input_path: str):
         audio_array = audio_array.astype(np.float32)
 
         rms = float(np.sqrt(np.mean(audio_array ** 2)))
-        silence_threshold = 0.01
+        silence_threshold = 1e-4
         if rms < silence_threshold:
             raise RuntimeError(
                 "Audio track is silent or has no clear speech -- skipping audio "
