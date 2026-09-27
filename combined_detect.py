@@ -25,9 +25,9 @@ def _to_raw_score(label: str, confidence: float) -> float:
     """
     fraction = confidence / 100.0
     if label == "REAL":
-        return 0.5 + (fraction - 0.5)  # already on the real side
+        return 0.5 + (fraction - 0.5)  
     else:
-        return 0.5 - (fraction - 0.5)  # mirror onto the fake side
+        return 0.5 - (fraction - 0.5)  
  
  
 def analyze_combined(video_path: str):
@@ -59,10 +59,7 @@ def analyze_combined(video_path: str):
     if audio_result is not None:
         raw_scores.append(_to_raw_score(audio_result["label"], audio_result["confidence"]))
     if movement_result is not None:
-        # Gemini's self-reported confidence is a softer, less rigorous
-        # signal than the trained models' scores -- weight it at half
-        # so one uncertain LLM judgment call can't single-handedly flip
-        # a confident result from the two trained models.
+      
         movement_raw = _to_raw_score(movement_result["label"], movement_result["confidence"])
         raw_scores.append(0.5 + (movement_raw - 0.5) * 0.5)
  
