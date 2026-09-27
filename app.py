@@ -12,13 +12,11 @@ import tempfile
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Bridge Streamlit Secrets to environment variables for Gemini before imports
 if "GEMINI_API_KEY" in st.secrets:
     os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 
 from combined_detect import analyze_combined
 
-# Fallback safely if assets/logo.png isn't committed yet
 LOGO_PATH = "assets/logo.png" if os.path.exists("assets/logo.png") else "logo.png"
 HAS_LOGO = os.path.exists(LOGO_PATH)
 
@@ -28,7 +26,6 @@ st.set_page_config(
     layout="centered",
 )
 
-# --- Custom Cute Styling (Purple, Blue, Pink & Rounded Bubbles) ---
 st.markdown(
     """
     <style>
