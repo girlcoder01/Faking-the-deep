@@ -77,3 +77,5 @@ Analyze, see the verdict.
 - Try a stronger pretrained model (e.g. a FaceForensics++-trained XceptionNet checkpoint) and compare results
 - Add support for analyzing multiple faces in a frame, not just the largest one
 - Package as a downloadable desktop app instead of a local Streamlit server
+
+//README.md made by Gemini//
