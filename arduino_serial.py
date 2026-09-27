@@ -18,13 +18,11 @@ def find_arduino_port():
         return None
     ports = list(serial.tools.list_ports.comports())
     for p in ports:
-        # Match common Arduino port patterns
         if any(keyword in p.device.lower() for keyword in ["usbmodem", "usbserial", "com", "ttyusb", "ttyacm"]):
             return p.device
     return None
 
 
-# Leave as None so find_arduino_port() dynamically finds the right USB port
 ARDUINO_PORT = None
 BAUD_RATE = 9600
 
@@ -44,7 +42,7 @@ def send_to_arduino(label: str, confidence: float, port: str = None):
 
     try:
         with serial.Serial(target_port, BAUD_RATE, timeout=2) as ser:
-            time.sleep(2)  # Give Arduino time to auto-reset on connection
+            time.sleep(2)  
             ser.write(message.encode("utf-8"))
             print(f"Sent to Arduino ({target_port}): {message.strip()}")
     except Exception as e:
