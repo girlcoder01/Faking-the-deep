@@ -89,7 +89,6 @@ def extract_face_crops(video_path: str, max_frames: int = 30, frame_stride: int 
                     face = frame[y:y + h, x:x + w]
 
             if face is None and detector is None:
-                # no detector available at all -> always use center crop
                 face = _center_crop(frame)
 
             if face is not None:
